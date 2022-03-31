@@ -29,7 +29,7 @@ def get_all_lists():
     all_posts = []
     all_labels = []
     for i, (_, posts) in enumerate(full_data.items()):
-        if i > 20:
+        if i > 100:
             break
         for post in posts:
             if post['text'] != '':
@@ -45,7 +45,7 @@ def main():
     all_posts, all_labels = get_all_lists()
     train_text, dev_text, train_labels, dev_labels = train_test_split(all_posts, all_labels, random_state=101, test_size=0.1)
 
-    vectorizer = TfidfVectorizer(analyzer='word', lowercase=True, max_features=500)
+    vectorizer = TfidfVectorizer(analyzer='word', lowercase=True, max_features=1000)
     train_texts_vec = vectorizer.fit_transform(train_text)
     dev_texts_vec = vectorizer.transform(dev_text)
 
