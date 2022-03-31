@@ -1,5 +1,5 @@
 
-from __init__ import individual_train_path, individual_dev_path, individual_labels_path
+from __init__ import get_new_experiment_folder, individual_train_path, individual_dev_path, individual_labels_path
 from scipy import sparse
 from sklearn.svm import SVR, SVC
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, StackingClassifier, StackingRegressor
@@ -8,8 +8,15 @@ from sklearn.tree import DecisionTreeClassifier
 
 import numpy as np
 import pdb
+import pickle
+import os
 
-# objective = "time_series" | "individual"
+def save_sk_model(model):
+    model_name = str(model).split('(')[0]
+    experiment_folder = get_new_experiment_folder(model_name)
+    model_path = os.path.join(experiment_folder, "best.pkl")
+    with open(model_path, 'wb') as fout:
+        pickle.dump(model, fout)
 
 def train_individual(mode):
     train_texts_vec = sparse.load_npz(individual_train_path)
@@ -25,7 +32,6 @@ def train_individual(mode):
         metric_name = 'MAE'
         metric = mean_absolute_error
     else:
-        # model = SVC(kernel='linear', verbose=10)
         model = StackingClassifier([
             ("svr", SVC(kernel='linear', verbose=10))
         ], final_estimator=DecisionTreeClassifier(max_depth=1))
@@ -38,8 +44,13 @@ def train_individual(mode):
     metric_result = metric(dev_labels, pred_labels)
     print(f"Model finished with {metric_name}: {metric_result}")
 
-    # model.estimators_[0]
-    pdb.set_trace()
+    save_sk_model(model)
+
+def train_time_series():
+    # TODO: get_individual_model() from already trained
+    # hidden_svm = model.estimators_[0]
+    # confidence = hidden_svm.coef_ * x + hidden_svm.intercept_
+    pass
 
 if __name__ == "__main__":
     # train_individual(mode="regression")
