@@ -1,11 +1,12 @@
 
-from __init__ import get_new_experiment_folder, individual_train_path, individual_dev_path, individual_labels_path
+from __init__ import get_new_experiment_folder, individual_train_path, individual_dev_path, individual_labels_path, time_series_data_path, logs_folder, vectorizer_path, pictures_folder
 from scipy import sparse
 from sklearn.svm import SVR, SVC
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, StackingClassifier, StackingRegressor
 from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 from sklearn.tree import DecisionTreeClassifier
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 import pickle
@@ -18,11 +19,7 @@ def save_sk_model(model):
     with open(model_path, 'wb') as fout:
         pickle.dump(model, fout)
 
-def train_individual(mode):
-    train_texts_vec = sparse.load_npz(individual_train_path)
-    dev_texts_vec = sparse.load_npz(individual_dev_path)
-    train_labels, dev_labels = np.load(individual_labels_path, allow_pickle=True)
-    
+def train_test_a_model(mode, train_texts_vec, train_labels, dev_texts_vec, dev_labels):
     if mode == "regression":
         train_labels = np.array(train_labels).astype(np.float32)
         dev_labels = np.array(dev_labels).astype(np.float32)
@@ -32,9 +29,7 @@ def train_individual(mode):
         metric_name = 'MAE'
         metric = mean_absolute_error
     else:
-        model = StackingClassifier([
-            ("svr", SVC(kernel='linear', verbose=10))
-        ], final_estimator=DecisionTreeClassifier(max_depth=1))
+        model = SVC(kernel='linear', verbose=10)
 
         metric_name = 'f1_score'
         metric = lambda *args: f1_score(*args, average='weighted')
@@ -46,13 +41,52 @@ def train_individual(mode):
 
     save_sk_model(model)
 
-def train_time_series():
-    # TODO: get_individual_model() from already trained
-    # hidden_svm = model.estimators_[0]
-    # confidence = hidden_svm.coef_ * x + hidden_svm.intercept_
-    pass
+def train_individual(mode):
+    train_texts_vec = sparse.load_npz(individual_train_path)
+    dev_texts_vec = sparse.load_npz(individual_dev_path)
+    train_labels, dev_labels = np.load(individual_labels_path, allow_pickle=True)
+
+    train_test_a_model(mode, train_texts_vec, train_labels, dev_texts_vec, dev_labels)
+
+def train_time_series(mode):
+    train_text, dev_text, train_labels, dev_labels = np.load(time_series_data_path, allow_pickle=True)
+    train_test_a_model(mode, train_text, train_labels, dev_text, dev_labels)
+
+def plot_binary_classification_importance(label, word_names, features_importance, indices_):
+    plt.figure(figsize=(20 * len(indices_) / 10, 7))
+    plt.bar(word_names[indices_], features_importance[indices_])
+    plt.title(f"{label.title()} Orientation")
+    
+    figure_path = os.path.join(pictures_folder, f"{label}_keywords.png")
+    plt.savefig(figure_path)
+
+def plot_svm_binary_classification_viz(vectorizer, model, topk=50):
+    word_names = vectorizer.get_feature_names()
+    word_names = np.array(word_names)
+    
+    features_importance = model.coef_.toarray()[0]
+    sorted_indices = np.argsort(features_importance)
+
+    worst_indices = sorted_indices[:topk]
+    best_indices = sorted_indices[-topk:]
+
+    plot_binary_classification_importance('negative', word_names, features_importance, worst_indices)
+    plot_binary_classification_importance('positive', word_names, features_importance, best_indices)
+
+def plot_feature_importance():
+    exp_dir = os.path.join(logs_folder, 'SVC_0')
+    model_path = os.path.join(exp_dir, 'best.pkl')
+    with open(model_path, 'rb') as fin:
+        model = pickle.load(fin)
+
+    with open(vectorizer_path, 'rb') as fin:
+        vectorizer = pickle.load(fin)
+    
+    plot_svm_binary_classification_viz(vectorizer, model)
 
 if __name__ == "__main__":
     # train_individual(mode="regression")
-    train_individual(mode="classification")
+    # train_individual(mode="classification")
+    # train_time_series(mode="classification")
+    plot_feature_importance()
 
