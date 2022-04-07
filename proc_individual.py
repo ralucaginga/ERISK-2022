@@ -32,10 +32,11 @@ def get_all_lists(full_data, n_maximum_posts=1800):
         for post in posts:
             if post['text'] != '':
                 clean_post = clean_text(post['text'])
-                tokenized_post = tokenize_text(clean_post)
-                
-                all_posts.append(tokenized_post)
-                all_labels.append(post['label'])
+                if clean_post != '':
+                    tokenized_post = tokenize_text(clean_post)
+                    
+                    all_posts.append(tokenized_post)
+                    all_labels.append(post['label'])
         print(f"Processing progress {i}/{len(full_data.keys())}", end='\r')
     return all_posts, all_labels
 

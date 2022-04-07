@@ -59,7 +59,5 @@ def main():
     time_series_dataset = np.array([train_text, dev_text, train_labels, dev_labels], dtype=object)
     np.save(time_series_data_path, time_series_dataset)
 
-    # TODO: make another script for plotting the time series data
-
 if __name__ == "__main__":
     main()
