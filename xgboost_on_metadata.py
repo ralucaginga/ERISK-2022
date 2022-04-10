@@ -1,31 +1,16 @@
-from os import listdir
-from os.path import isfile, join
-import re
+# F1 score 0.68
+
 import numpy as np
 import xgboost as xgb
-from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 import pandas as pd
-import sys, csv
-
-csv.field_size_limit(sys.maxsize)
-
-model = AutoModel.from_pretrained("mental/mental-bert-base-uncased")
-tokenizer = AutoTokenizer.from_pretrained("mental/mental-bert-base-uncased")
-
 
 def scorer(model, X, y):
     y_pred = model.predict(X)
     score = f1_score(y_pred, y)
     return score
-
-
-
-def tokenize_text(text):
-    return ' '.join(tokenizer.tokenize(text))
-
 
 
 data = pd.read_csv('data/full_dataframe.csv')
@@ -34,10 +19,6 @@ data.pop('label')
 train_texts = data['text']
 data.pop('text')
 train_metadata = data.values
-
-train_embeddings = [tokenizer.encode(train_text, padding='max_length', max_length=1024, truncation=True)
-               for train_text in train_texts]
-train_data = np.concatenate((np.array(train_embeddings), np.array(train_embeddings)), axis=1)
 train_data = np.array(train_metadata)
 
 
