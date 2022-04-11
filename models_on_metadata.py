@@ -6,6 +6,10 @@ from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_sc
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 import pandas as pd
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
 
 def scorer(model, X, y):
     y_pred = model.predict(X)
@@ -49,7 +53,7 @@ print(np.mean(np.array(scores)))
 
 
 X_train, X_test, y_train, y_test = train_test_split(train_data, train_labels, test_size=0.2,
-                                                    random_state=13, shuffle=False)
+                                                    random_state=13, shuffle=True)
 
 print("Pos Neg report:")
 print((np.shape(y_train)[0] - np.sum(y_train)) / np.sum(y_train))
@@ -59,4 +63,20 @@ def xgboost_classifier():
     y_pred = model.predict(X_test)
     print_res(y_pred, y_test, model_name='XGBoost')
 
+
+def svm_classifier():
+    svm_model = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+    svm_model.fit(X_train, y_train)
+    y_pred = svm_model.predict(X_test)
+    print_res(y_pred, y_test, model_name='SVM')
+
+
+def random_forest_classifier():
+    rf_model = RandomForestClassifier()
+    rf_model.fit(X_train, y_train)
+    y_pred = rf_model.predict(X_test)
+    print_res(y_pred, y_test, model_name='Random forest')
+
 xgboost_classifier()
+svm_classifier()
+random_forest_classifier()
