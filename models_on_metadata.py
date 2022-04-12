@@ -9,7 +9,10 @@ import pandas as pd
 from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMClassifier
+from sklearn.linear_model import LogisticRegression
+import pickle
+import torch
 
 def scorer(model, X, y):
     y_pred = model.predict(X)
@@ -57,26 +60,47 @@ X_train, X_test, y_train, y_test = train_test_split(train_data, train_labels, te
 
 print("Pos Neg report:")
 print((np.shape(y_train)[0] - np.sum(y_train)) / np.sum(y_train))
-def xgboost_classifier():
-    model = xgb.XGBClassifier(scale_pos_weight=10)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    print_res(y_pred, y_test, model_name='XGBoost')
 
 
-def svm_classifier():
+def evaluate_models():
+    xgb_model = xgb.XGBClassifier(scale_pos_weight=10)
+    scores = cross_val_score(xgb_model, train_data, train_labels,
+                             cv=5, scoring=scorer)
+    print('XGBoost cross validation:')
+    print(scores)
+    print(np.mean(np.array(scores)))
+
+    lgbm_model = LGBMClassifier()
+    scores = cross_val_score(lgbm_model, train_data, train_labels,
+                             cv=5, scoring=scorer)
+    print('LightGBM cross validation:')
+    print(scores)
+    print(np.mean(np.array(scores)))
+
     svm_model = make_pipeline(StandardScaler(), SVC(gamma='auto'))
-    svm_model.fit(X_train, y_train)
-    y_pred = svm_model.predict(X_test)
-    print_res(y_pred, y_test, model_name='SVM')
+    scores = cross_val_score(svm_model, train_data, train_labels,
+                             cv=5, scoring=scorer)
+    print('SVM cross validation:')
+    print(scores)
+    print(np.mean(np.array(scores)))
+    logistic_regression = LogisticRegression(max_iter=100000)
+    scores = cross_val_score(logistic_regression, train_data, train_labels,
+                             cv=5, scoring=scorer)
+    print('Logistic Regression cross validation:')
+    print(scores)
+    print(np.mean(np.array(scores)))
+
+def save_models():
+    xgb_model = xgb.XGBClassifier(scale_pos_weight=10)
+    xgb_model.fit(train_data, train_labels)
+    pickle.dump(xgb_model, open('bogdan_pickle_xgb_on_metadata.sav', 'wb'))
+    # torch.save(xgb_model.state_dict(), 'bogdan_pytorch_xgb_on_metadata.pth')
+
+    lgbm_model = LGBMClassifier()
+    lgbm_model.fit(train_data, train_labels)
+    pickle.dump(lgbm_model, open('bogdan_pickle_lgbm_on_metadata.sav', 'wb'))
+    # torch.save(lgbm_model.state_dict(), 'bogdan_pytorch_lgbm_on_metadata.pth')
 
 
-def random_forest_classifier():
-    rf_model = RandomForestClassifier()
-    rf_model.fit(X_train, y_train)
-    y_pred = rf_model.predict(X_test)
-    print_res(y_pred, y_test, model_name='Random forest')
-
-xgboost_classifier()
-svm_classifier()
-random_forest_classifier()
+# evaluate_models()
+save_models()
