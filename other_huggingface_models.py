@@ -50,6 +50,7 @@ F1 score: {f1_score(y_pred, y_test)}
 
 
 # Shuffling
+np.random.seed(3)
 idx = np.random.permutation(len(data))
 data = data[idx]
 labels = labels[idx]
@@ -74,7 +75,7 @@ def xgboost_classifier():
     y_pred_xgb = xgb_model.predict(X_test)
     y_pred_emotion = []
     y_pred_sentiment = []
-    for task in ['sentiment', 'emotion']:
+    for task in []:
         model_path = f"cardiffnlp/twitter-roberta-base-{task}"
         model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
@@ -89,7 +90,7 @@ def xgboost_classifier():
         print('Test texts len')
         print(len(test_texts))
         for (text_idx, text) in enumerate(test_texts):
-            text = text[:300]
+            text = text[60:]
             if text_idx % 100 == 0:
                 print(f'Got to {text_idx}')
             encoded_input = tokenizer(text, return_tensors='pt')
@@ -124,14 +125,14 @@ def xgboost_classifier():
 
 def run_classifiers():
     full_train = data
-    for task in ['sentiment']:
+    for task in ['sentiment', 'emotion']:
         model_path = f"cardiffnlp/twitter-roberta-base-{task}"
         model = AutoModelForSequenceClassification.from_pretrained(model_path)
         print(f'Current task is {task}')
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         model_scores_train = []
         for (text_idx, text) in enumerate(texts):
-            text = ' '.join(tokenizer.tokenize(text)[-70:])
+            text = ' '.join(tokenizer.tokenize(text)[:60])
             if text_idx % 100 == 0:
                 print(f'Got to {text_idx}')
             encoded_input = tokenizer(text, return_tensors='pt')

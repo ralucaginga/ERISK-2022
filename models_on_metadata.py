@@ -30,33 +30,31 @@ train_data = np.array(train_metadata)
 
 
 def print_res(y_test, y_pred, model_name=""):
+    false_positives = np.sum(np.logical_and(y_pred == 1, y_test == 0))
+    false_negatives = np.sum(np.logical_and(y_pred == 0, y_test == 1))
     print(f"""
 Model: {model_name}
 Accuracy score: {accuracy_score(y_pred, y_test)}
 Precision score: {precision_score(y_pred, y_test)}
 Recall score: {recall_score(y_pred, y_test)}
 F1 score: {f1_score(y_pred, y_test)}
+False positives: {false_positives}
+False negatives: {false_negatives}
 
 """)
 
 
 
 # Shuffling for cross_val_score
-model = xgb.XGBClassifier(scale_pos_weight=10)
+np.random.seed(3)
 idx = np.random.permutation(len(train_data))
 train_data = train_data[idx]
 train_labels = train_labels[idx]
 
-scores = cross_val_score(model, train_data, train_labels,
-                         cv=5, scoring=scorer)
-
-print('Sklearn cross validation:')
-print(scores)
-print(np.mean(np.array(scores)))
 
 
 X_train, X_test, y_train, y_test = train_test_split(train_data, train_labels, test_size=0.2,
-                                                    random_state=13, shuffle=True)
+                                                    random_state=3, shuffle=True)
 
 print("Pos Neg report:")
 print((np.shape(y_train)[0] - np.sum(y_train)) / np.sum(y_train))
@@ -102,5 +100,5 @@ def save_models():
     # torch.save(lgbm_model.state_dict(), 'bogdan_pytorch_lgbm_on_metadata.pth')
 
 
-# evaluate_models()
+#evaluate_models()
 save_models()
