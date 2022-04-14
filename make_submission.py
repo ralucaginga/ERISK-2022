@@ -231,29 +231,29 @@ while should_continue:
         json.dump(dates_for_users, outfile)
 
     run = 0
-    # for model in user_level_models:
-    #     print(f'Run: {run}')
-    #     results = []
-    #     start_time = time.perf_counter()
-    #     for user in full_texts_for_users.keys():
-    #         # user can be used to get any information for the user from the dicts like the current text, full text etc
-    #         label, score = model(user)
-    #         results.append({
-    #             'nick': nicks_for_users[user],
-    #             'decision': label,
-    #             'score': score
-    #         })
+    for model in user_level_models:
+        print(f'Run: {run}')
+        results = []
+        start_time = time.perf_counter()
+        for user in full_texts_for_users.keys():
+            # user can be used to get any information for the user from the dicts like the current text, full text etc
+            label, score = model(user)
+            results.append({
+                'nick': nicks_for_users[user],
+                'decision': label,
+                'score': score
+            })
 
-    #         time_elapsed = time.perf_counter() - start_time
-    #         if time_elapsed > 60:
-    #             print(user)
-    #             start_time = time.perf_counter()
+            time_elapsed = time.perf_counter() - start_time
+            if time_elapsed > 60:
+                print(user)
+                start_time = time.perf_counter()
 
-    #     json_results = json.dumps(results)
-    #     post_response = requests.post(f'{POST_URL}/{run}', data=json_results, headers=HEADERS)
-    #     print('Post request done')
-    #     print(post_response)
-    #     run += 1
+        json_results = json.dumps(results)
+        post_response = requests.post(f'{POST_URL}/{run}', data=json_results, headers=HEADERS)
+        print('Post request done')
+        print(post_response)
+        run += 1
 
     for model in full_ct_models:
         print(f'Run: {run}')
