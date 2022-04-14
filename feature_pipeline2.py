@@ -1,28 +1,7 @@
-import pandas as pd
-import numpy as np
-import torch
-import math
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-from collections import Counter
-from time import time
-from tqdm import tqdm
-import pickle
-from time import time
 import spacy
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from glob import glob
 from datetime import datetime
-from emot.emo_unicode import UNICODE_EMOJI, UNICODE_EMOJI_ALIAS, EMOTICONS_EMO
-# from flashtext import KeywordProcessor
-import nltk
 import re
-# import contractions
-# from nrclex import NRCLex
-# nltk.download('stopwords')
-# nltk.download('punkt')
 
 data_folder = 'dictionaries_depression'
 antidepressant = os.path.join(data_folder, "antidepressants.txt")
