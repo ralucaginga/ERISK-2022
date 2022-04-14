@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import json
 import numpy as np
+import time
 import pdb
 
 from transformers import BertTokenizer
@@ -45,8 +46,16 @@ def export_probas_and_labels(model, test_dataloader, exp_dir):
     probas_path = os.path.join(exp_dir, "dev_probas.npy")
     np.save(probas_path, all_probas)
 
-import time
-def inference(model, texts, threshold=55/99, batch_size=8):
+def inference_single(model, text, threshold=52/99):
+    token_dict = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=400, \
+                              return_token_type_ids=False, return_attention_mask=False)
+    token_ids = token_dict['input_ids'].to(device)        
+    with torch.no_grad():
+        output = model(token_ids)
+        labels = (output.logits[:, 0] > threshold).int()
+    return labels[0].item()
+
+def inference(model, texts, threshold=52/99, batch_size=8):
     all_probas = []
     all_labels = []
     n_texts = len(texts)
@@ -80,12 +89,12 @@ def get_model_by_exp_dir(model_path):
 
     return model
 
-model_1 = get_model_by_exp_dir(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
-inference_1 = lambda texts: inference(model_1, texts, threshold=55/99)
+# model_1 = get_model_by_exp_dir(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
+# inference_1 = lambda texts: inference(model_1, texts, threshold=55/99)
 
 
 def main():
-    exp_dir = os.path.join('logs', 'mental', 'mental-bert-base-uncased_2')
+    exp_dir = os.path.join('logs', 'mental', 'mental-bert-base-uncased_5')
     model_path = os.path.join(exp_dir, 'best.pth')
 
     model = get_model_by_exp_dir(model_path)
@@ -98,7 +107,7 @@ def main():
         test_set = json.load(fin)
 
     for entry in test_set:
-        label = inference(model, entry["text"])
+        label = inference_single(model, entry["text"])
         entry["predicted"] = label
 
     with open(test_json_path, 'w') as fout:
