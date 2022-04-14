@@ -16,13 +16,13 @@ from nltk.stem import WordNetLemmatizer
 from glob import glob
 from datetime import datetime
 from emot.emo_unicode import UNICODE_EMOJI, UNICODE_EMOJI_ALIAS, EMOTICONS_EMO
-from flashtext import KeywordProcessor
+# from flashtext import KeywordProcessor
 import nltk
 import re
-import contractions
-from nrclex import NRCLex
-nltk.download('stopwords')
-nltk.download('punkt')
+# import contractions
+# from nrclex import NRCLex
+# nltk.download('stopwords')
+# nltk.download('punkt')
 
 data_folder = 'dictionaries_depression'
 antidepressant = os.path.join(data_folder, "antidepressants.txt")
