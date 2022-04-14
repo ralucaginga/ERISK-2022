@@ -47,11 +47,10 @@ xgb_model_avg = pickle.load(open('./bogdan_pickle_xgb_on_metadata_avg.sav', 'rb'
 svc_model = pickle.load(open('models/svc_on_combined.pkl', 'rb'))
 voting_model = pickle.load(open('models/voting_on_combined.pkl', 'rb'))
 voting_text = pickle.load(open('models/voting_on_text.pkl', 'rb'))
-model = BertForSequenceClassification.from_pretrained("models/checkpoint-15546")
+# model = BertForSequenceClassification.from_pretrained("models/checkpoint-15546")
 
 # Trainer
-trainer = Trainer(model=model,
-                  tokenizer=tokenizer)
+# trainer = Trainer(model=model, tokenizer=tokenizer)
 
 # Preprocess functions
 # Preprocessing stuff
@@ -98,7 +97,7 @@ def xgb_metadata_predict(user):
     dates = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in dates]
     features = features_pipeline(dates, text)
     label = int(xgb_model.predict(np.array([features]))[0])
-    score = float(xgb_model.predict_proba(np.array([features]))[0][label])
+    score = float(xgb_model.predict_proba(np.array([features]))[0][1])
     return label, score
 
 
@@ -117,7 +116,7 @@ def xgb_metadata_avg_predict(user):
     dates = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in dates]
     features = features_pipeline2(dates, text)
     label = int(xgb_model_avg.predict(np.array([features]))[0])
-    score = float(xgb_model.predict_proba(np.array([features]))[0][label])
+    score = float(xgb_model.predict_proba(np.array([features]))[0][1])
     return label, score
 
 def svm_combined_predict(user):
@@ -131,7 +130,7 @@ def svm_combined_predict(user):
     meta_information = sparse.coo_matrix(meta_scaled)
     combined_text = sparse.hstack([transform, meta_information])
     label = int(svc_model.predict(combined_text)[0])
-    score = float(svc_model.predict_proba(combined_text)[0][label])
+    score = float(svc_model.predict_proba(combined_text)[0][1])
     print(score)
     return label, score
 
@@ -147,7 +146,7 @@ def voting_combined_predict(user):
     meta_information = sparse.coo_matrix(meta_scaled)
     combined_text = sparse.hstack([transform, meta_information])
     label = int(voting_model.predict(combined_text)[0])
-    score = float(voting_model.predict_proba(combined_text)[0][label])
+    score = float(voting_model.predict_proba(combined_text)[0][1])
     print(score)
     return label, score
 
@@ -205,24 +204,25 @@ start_time = time.perf_counter()
 while should_continue:
     print(f'STEP: {step}')
     for answer in answers:
-        answer_text = answer['title'] + ' ' + answer['content']
+        redditor_str = answer['redditor']
+        answer_text = str(answer.get('title', '') + ' ' + answer.get('content', ''))
 
-        current_text_for_user[answer['redditor']] = answer_text
-        if answer['redditor'] not in full_texts_for_users.keys():
-            full_texts_for_users[answer['redditor']] = answer_text
+        current_text_for_user[redditor_str] = answer_text
+        if redditor_str not in full_texts_for_users.keys():
+            full_texts_for_users[redditor_str] = answer_text
         else:
-            full_texts_for_users[answer['redditor']] = full_texts_for_users[answer['redditor']] + ' ' + \
+            full_texts_for_users[redditor_str] = full_texts_for_users[redditor_str] + ' ' + \
                                                        answer_text
 
-        if answer['redditor'] not in nicks_for_users:
-            nicks_for_users[answer['redditor']] = answer['nick']
+        if redditor_str not in nicks_for_users:
+            nicks_for_users[redditor_str] = answer['nick']
 
         clean_date = answer['date'].split('.')[0]
 
-        if answer['redditor'] not in dates_for_users:
-            dates_for_users[answer['redditor']] = [clean_date]
+        if redditor_str not in dates_for_users:
+            dates_for_users[redditor_str] = [clean_date]
         else:
-            dates_for_users[answer['redditor']].append(clean_date)
+            dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
     with open('data/submit/full_texts_and_users.json', 'w') as outfile:
@@ -236,10 +236,10 @@ while should_continue:
     for model in full_ct_models:
         print(f'Run: {run}')
         users_key = list(full_texts_for_users.keys())
-        users_text = list(full_texts_for_users.values())
+        users_text = [basic_preprocess_bert(text) for text in full_texts_for_users.values()]
         
         results = []
-        labels, score = model(users_text)
+        scores, labels = model(users_text)
         for user, label, score in zip(users_key, labels, score):
             results.append({
                 'nick': nicks_for_users[user],
@@ -251,7 +251,6 @@ while should_continue:
         post_response = requests.post(f'{POST_URL}/{run}', data=json_results, headers=HEADERS)
         print('Post request done')
         print(post_response)
-        
         run += 1
 
 
@@ -261,25 +260,17 @@ while should_continue:
         for user in full_texts_for_users.keys():
             # user can be used to get any information for the user from the dicts like the current text, full text etc
             label = model(user)
-            # if label != 0:
-            #     # SHould probably comment this
-            #     print("One found")
-            #     print(full_texts_for_users[user])
             results.append({
                 'nick': nicks_for_users[user],
                 'decision': label,
                 'score': label
             })
-            time_elapsed = time.perf_counter() - start_time 
-            # 169 useri / minut 
-            # 2289 useri -> 13.5 minute
-            if time_elapsed > 60:
-                pdb.set_trace()
 
         json_results = json.dumps(results)
         post_response = requests.post(f'{POST_URL}/{run}', data=json_results, headers=HEADERS)
         print('Post request done')
         print(post_response)
+        run += 1
 
         
 
