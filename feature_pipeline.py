@@ -21,8 +21,8 @@ import nltk
 import re
 import contractions
 from nrclex import NRCLex
-nltk.download('stopwords')
-nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('punkt')
 
 data_folder = 'dictionaries_depression'
 antidepressant = os.path.join(data_folder, "antidepressants.txt")

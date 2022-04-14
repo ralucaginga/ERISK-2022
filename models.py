@@ -1,15 +1,19 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import pdb
 
-from transformers import BertForSequenceClassification
+from transformers import BertForSequenceClassification, RobertaForSequenceClassification
 
 from transformers.models.bert.modeling_bert import BertForSequenceClassification, BertModel, BaseModelOutputWithPoolingAndCrossAttentions, SequenceClassifierOutput
+
+# from textaugment import MIXUP
+# mixup_tool = MIXUP(runs=2)
 
 classifier_layer = lambda config: nn.Sequential(
     nn.Linear(config.hidden_size, 256),
     nn.Dropout(0.2),
-    nn.ReLU(),
+    nn.GELU(),
     nn.Linear(256, config.num_labels)
 )
 
@@ -18,14 +22,39 @@ class DepressedBert(BertForSequenceClassification):
         super().__init__(config)
         self.classifier = classifier_layer(config)
 
+class DepressedRoberta(RobertaForSequenceClassification):
+    def __init__(self, config):
+        super().__init__(config)
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(150 * 768, 2 * 768),
+            nn.Dropout(0.2),
+            nn.GELU(),
+            
+            nn.Linear(2 * 768, 256),
+            nn.Dropout(0.2),
+            nn.GELU(),
+            
+            nn.Linear(256, config.num_labels)
+        )
+
 
 class MixupBertModel(BertModel):
+    def augment_embeddings(self, embedding_output, labels, alpha=0.2, gamma=0.5):
+        bernoulli_coin = np.random.binomial(1, gamma, 1)[0]
+        if bernoulli_coin == 0:
+            return embedding_output, labels
 
-    def augment_embeddings(self, embedding_output, labels):
-        
-        from textaugment import MIXUP
-        # learn by competition and comparisons
-        pass
+        batch_size = embedding_output.size(0)
+        device = embedding_output.device
+
+        lam_vector = np.random.beta(alpha, alpha, batch_size)
+        lam_tensor = torch.tensor(lam_vector).to(device)
+        index = np.random.permutation(batch_size)
+
+        mixed_embeddings = (embedding_output.T * lam_tensor).T + (embedding_output[index, :].T * (1.0 - lam_tensor)).T
+        mixed_labels = (labels.T * lam_tensor).T + (labels[index].T * (1.0 - lam_tensor)).T
+        return mixed_embeddings.float(), mixed_labels.float()
 
     def forward(
         self,
@@ -105,8 +134,7 @@ class MixupBertModel(BertModel):
             inputs_embeds=inputs_embeds,
             past_key_values_length=past_key_values_length,
         )
-        pdb.set_trace()
-        embedding_output = self.augment_embeddings(embedding_output, labels)
+        embedding_output, labels = self.augment_embeddings(embedding_output, labels)
 
         encoder_outputs = self.encoder(
             embedding_output,
@@ -135,7 +163,12 @@ class MixupBertModel(BertModel):
             cross_attentions=encoder_outputs.cross_attentions,
         )
 
-class MixupDepressedBert(DepressedBert):
+class MixupDepressedBert(BertForSequenceClassification):
+    def __init__(self, config):
+        super().__init__(config)
+        self.bert = MixupBertModel(config)
+        self.classifier = classifier_layer(config)
+
     def forward(
         self,
         input_ids=None,
@@ -196,5 +229,20 @@ class MixupDepressedBert(DepressedBert):
             attentions=outputs.attentions,
         )
 
-# model = BertForSequenceClassification.from_pretrained("mental/mental-bert-base-uncased")
-# print(type(model))
+from datasets import EriskDataset
+from torch.utils.data import DataLoader
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+model = MixupDepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1).to(device)
+
+train_dataset = EriskDataset('train')
+train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0)
+
+for batch in train_dataloader:
+    input_ids, labels = batch
+    input_ids = input_ids.to(device)
+    labels = labels.float().to(device)
+
+    output = model(input_ids, labels=labels)
+    loss = output.loss
+    break
