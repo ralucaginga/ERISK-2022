@@ -102,7 +102,7 @@ def inference_2(model, texts, batch_size=8):
         
         time_elapsed = time.perf_counter() - start_time
         print(f"Position {start}/{n_texts} ended in {time_elapsed} seconds")
-    pdb.set_trace()
+    # pdb.set_trace()
     return all_probas, all_labels
 
 

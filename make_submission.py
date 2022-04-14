@@ -183,6 +183,13 @@ def voting_combined_predict(user):
 
 # user could be used to acces any data in the dictionaries above
 
+with open(f'data/submit/full_texts_and_users.json', 'r') as infile:
+    full_texts_for_users = json.load(infile)
+with open(f'data/submit/nicks_for_users.json', 'r') as infile:
+    nicks_for_users = json.load(infile)
+with open(f'data/submit/dates_for_users.json', 'r') as infile:
+    dates_for_users = json.load(infile)
+
 full_ct_models = [inference_1] 
 user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict]
 HEADERS = {
@@ -201,6 +208,11 @@ start_time = time.perf_counter()
 
 while should_continue:
     print(f'STEP: {step}')
+
+    number = answers[0]["number"]
+    with open('data/submit/number.out', 'w') as fout:
+        fout.write(str(number))
+
     for answer in answers:
         redditor_str = answer['redditor']
         answer_text = str(answer.get('title', '') + ' ' + answer.get('content', ''))
@@ -223,11 +235,18 @@ while should_continue:
             dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
-    with open('data/submit/full_texts_and_users.json', 'w') as outfile:
+    with open(f'data/submit/full_texts_and_users_{number}.json', 'w') as outfile:
         json.dump(full_texts_for_users, outfile)
-    with open('data/submit/nicks_for_users.json', 'w') as outfile:
+    with open(f'data/submit/nicks_for_users_{number}.json', 'w') as outfile:
         json.dump(nicks_for_users, outfile)
-    with open('data/submit/dates_for_users.json', 'w') as outfile:
+    with open(f'data/submit/dates_for_users_{number}.json', 'w') as outfile:
+        json.dump(dates_for_users, outfile)
+
+    with open(f'data/submit/full_texts_and_users.json', 'w') as outfile:
+        json.dump(full_texts_for_users, outfile)
+    with open(f'data/submit/nicks_for_users.json', 'w') as outfile:
+        json.dump(nicks_for_users, outfile)
+    with open(f'data/submit/dates_for_users.json', 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
     run = 0
