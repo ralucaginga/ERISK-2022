@@ -1,6 +1,5 @@
 import json
 import pickle
-<<<<<<< HEAD
 import pdb
 import time
 
@@ -8,8 +7,6 @@ import numpy as np
 import requests
 # from feature_pipeline import features_pipeline
 from feature_pipeline2 import features_pipeline2
-from test_bert import inference_1
-=======
 import tensorflow as tf
 import re
 import spacy
@@ -28,7 +25,6 @@ from flashtext import KeywordProcessor
 from nrclex import NRCLex
 from datasets import Dataset
 from transformers import Trainer, BertForSequenceClassification, BertTokenizer
->>>>>>> main
 
 TEAM_TOKEN = f'v7PtOtt0pFUim9HbtrKqTiurdwRHgQR6Eh5sgZPT5xI'
 GET_URL = f'https://erisk.irlab.org/challenge-service/getwritings/{TEAM_TOKEN}'
@@ -50,6 +46,7 @@ xgb_model = pickle.load(open('./bogdan_pickle_xgb_on_metadata.sav', 'rb'))
 xgb_model_avg = pickle.load(open('./bogdan_pickle_xgb_on_metadata_avg.sav', 'rb'))
 svc_model = pickle.load(open('models/svc_on_combined.pkl', 'rb'))
 voting_model = pickle.load(open('models/voting_on_combined.pkl', 'rb'))
+voting_text = pickle.load(open('models/voting_on_text.pkl', 'rb'))
 model = BertForSequenceClassification.from_pretrained("models/checkpoint-15546")
 
 # Trainer
@@ -105,6 +102,14 @@ def xgb_metadata_predict(user):
     return label, score
 
 
+def voting_text_predict(user):
+    text = full_texts_for_users[user]
+    clean_text = full_preprocess_text(text)
+    transform = tfidf.transform([clean_text])
+    label = int(voting_text.predict(transform)[0])
+    score = float(svc_model.predict_proba(transform)[0][1])
+    return label, score
+
 # Model trained on averaged metadata
 def xgb_metadata_avg_predict(user):
     text = current_text_for_user[user]
@@ -114,7 +119,6 @@ def xgb_metadata_avg_predict(user):
     label = int(xgb_model_avg.predict(np.array([features]))[0])
     score = float(xgb_model.predict_proba(np.array([features]))[0][label])
     return label, score
-
 
 def svm_combined_predict(user):
     text = full_texts_for_users[user]
