@@ -100,7 +100,7 @@ def count_depressive_terms(text):
     return antidepress_count, three_grams_count, five_grams_count, overgeneralization_count, psychoactive_count, unpleasant_feel_count, nssi_count, temporal_count
 
 
-def features_pipeline(dates, text):
+def features_pipeline2(dates, text):
     words_count = len(text.split())
     punct_count = text.count('.') + text.count(',') + text.count(';') + text.count(':') + text.count('-')
     questions_count = text.count('?')
@@ -202,20 +202,21 @@ def features_pipeline(dates, text):
     antidepress_count, three_grams_count, five_grams_count, overgeneralization_count, psychoactive_count, unpleasant_feel_count, nssi_count, temporal_count = count_depressive_terms(
         text)
 
-    list_of_features = [words_count,adjective_count, verb_count, noun_count, adverb_count,
-       negation_count, formality_metric, readiness_to_action_coefficient,
+
+
+    list_of_features = [adjective_count / words_count, verb_count  / words_count, noun_count  / words_count, adverb_count  / words_count,
+       negation_count / words_count, formality_metric, readiness_to_action_coefficient,
        aggressiveness_coefficient, activity_index, time_level,
-       first_person_pron_count, antidepress_count, three_grams_count,
-       five_grams_count, overgeneralization_count, psychoactive_count,
-       unpleasant_feel_count, nssi_count, temporal_count, punct_count,
-       questions_count, exclamations_count, capitalized_count]
+       first_person_pron_count / words_count, antidepress_count / words_count, three_grams_count / words_count,
+       five_grams_count / words_count, overgeneralization_count / words_count, psychoactive_count / words_count,
+       unpleasant_feel_count / words_count, nssi_count / words_count, temporal_count / words_count, punct_count / words_count,
+       questions_count / words_count, exclamations_count / words_count / words_count, capitalized_count / words_count]
 
     return list_of_features
 
 
 # %%
 ### Testing
-
 values = [
     "I have paranoia and depression. I have anxiety and I hate this life",
     "I go to therapy. I have paranoia and go to psychologist",
@@ -236,5 +237,5 @@ all_dates = []
 for text in values:
     clean_text.append(basic_preprocess(text))
     all_dates = [datetime.strptime(date, '%Y-%m-%d %H:%M:%S') for page in dates for date in page]
-    features.append(features_pipeline(all_dates, text))
+    features.append(features_pipeline2(all_dates, text))
 # %%

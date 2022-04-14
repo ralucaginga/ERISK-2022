@@ -59,12 +59,29 @@ X_train, X_test, y_train, y_test = train_test_split(train_data, train_labels, te
 print("Pos Neg report:")
 print((np.shape(y_train)[0] - np.sum(y_train)) / np.sum(y_train))
 
+def create_avg_data():
+    data_copy = data.copy()
+    columns = 'adjective_count,verb_count,noun_count,adverb_count,negation_count,first_person_pron_count,antidepress_count,three_grams_count,five_grams_count,overgeneralization_count,psychoactive_count,unpleasant_feel_count,nssi_count,temporal_count,punct_count,questions_count,exclamations_count,capitalized_count'.split(',')
+    for column in columns:
+        data_copy[column] = data_copy[column] / data_copy['words_count']
+    data_copy.pop('words_count')
+    print(data_copy.keys())
+    return np.array(data_copy.values)[idx]
+
 
 def evaluate_models():
     xgb_model = xgb.XGBClassifier(scale_pos_weight=10)
     scores = cross_val_score(xgb_model, train_data, train_labels,
                              cv=5, scoring=scorer)
     print('XGBoost cross validation:')
+    print(scores)
+    print(np.mean(np.array(scores)))
+
+    xgb_model = xgb.XGBClassifier(scale_pos_weight=10)
+    train_data_avg = create_avg_data()
+    scores = cross_val_score(xgb_model, train_data_avg, train_labels,
+                             cv=5, scoring=scorer)
+    print('XGBoost 2 cross validation:')
     print(scores)
     print(np.mean(np.array(scores)))
 
@@ -92,7 +109,12 @@ def save_models():
     xgb_model = xgb.XGBClassifier(scale_pos_weight=10)
     xgb_model.fit(train_data, train_labels)
     pickle.dump(xgb_model, open('bogdan_pickle_xgb_on_metadata.sav', 'wb'))
-    # torch.save(xgb_model.state_dict(), 'bogdan_pytorch_xgb_on_metadata.pth')
+
+    xgb_model_avg = xgb.XGBClassifier(scale_pos_weight=10)
+    train_data_avg = create_avg_data()
+    print(np.shape(train_data_avg))
+    xgb_model_avg.fit(train_data_avg, train_labels)
+    pickle.dump(xgb_model_avg, open('bogdan_pickle_xgb_on_metadata_avg.sav', 'wb'))
 
     lgbm_model = LGBMClassifier()
     lgbm_model.fit(train_data, train_labels)
@@ -100,5 +122,5 @@ def save_models():
     # torch.save(lgbm_model.state_dict(), 'bogdan_pytorch_lgbm_on_metadata.pth')
 
 
-#evaluate_models()
+# evaluate_models()
 save_models()
