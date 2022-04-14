@@ -14,8 +14,9 @@ def extract_xml_data(xml_path, cases_folder, label_id):
 
     dataset = []
     for elem in tree.findall('WRITING'):
+        text = elem.find('TITLE').text + elem.find('TEXT').text
         dataset.append({
-            "text": elem.find('TEXT').text.strip(),
+            "text": text.strip(),
             "date": elem.find('DATE').text.strip(),
             "info": elem.find('INFO').text.strip(),
             "source": cases_folder,

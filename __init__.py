@@ -14,6 +14,11 @@ individual_labels_path = os.path.join('data', 'individual_labels.npy')
 
 time_series_data_path = os.path.join(data_folder, 'time_series_data.npy')
 
+train_json = os.path.join(data_folder, 'train_.json')
+dev_json = os.path.join(data_folder, 'dev_.json')
+test_dev_json = os.path.join(data_folder, 'dev_full.json')
+test_json_path = os.path.join(data_folder, 'test_manual.json')
+
 def get_new_experiment_folder(model_name):
     folder_re = os.path.join(logs_folder, f'{model_name}*')
     experiment_id = len(glob(folder_re))
