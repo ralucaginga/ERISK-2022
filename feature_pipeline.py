@@ -181,7 +181,8 @@ def features_pipeline(dates, text):
     antidepress_count, three_grams_count, five_grams_count, overgeneralization_count, psychoactive_count, unpleasant_feel_count, nssi_count, temporal_count = count_depressive_terms(
         text)
 
-    list_of_features = [words_count,adjective_count, verb_count, noun_count, adverb_count,
+    list_of_features = [words_count,adjective_count, verb_count, noun_count,
+                        adverb_count,
        negation_count, formality_metric, readiness_to_action_coefficient,
        aggressiveness_coefficient, activity_index, time_level,
        first_person_pron_count, antidepress_count, three_grams_count,

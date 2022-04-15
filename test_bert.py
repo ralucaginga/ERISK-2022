@@ -7,13 +7,12 @@ import time
 import pdb
 
 from transformers import BertTokenizer
-from torch.utils.data import Dataset, DataLoader
 
-from __init__ import train_json, dev_json, test_dev_json, test_json_path
+from __init__ import test_json_path
 from models import DepressedBert
-from transformers.models.bert.tokenization_bert import BertTokenizer
+from transformers import BertTokenizer, BertForSequenceClassification
 
-tokenizer = BertTokenizer.from_pretrained("mental/mental-bert-base-uncased")
+softmax = nn.Softmax(dim=-1)
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -47,7 +46,7 @@ def export_probas_and_labels(model, test_dataloader, exp_dir):
     np.save(probas_path, all_probas)
 
 def inference_single(model, text, threshold=52/99):
-    token_dict = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=400, \
+    token_dict = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=512, \
                               return_token_type_ids=False, return_attention_mask=False)
     token_ids = token_dict['input_ids'].to(device)        
     with torch.no_grad():
@@ -55,7 +54,7 @@ def inference_single(model, text, threshold=52/99):
         labels = (output.logits[:, 0] > threshold).int()
     return labels[0].item()
 
-def inference(model, texts, threshold=52/99, batch_size=8):
+def inference(model, texts, threshold=55/99, batch_size=8):
     all_probas = []
     all_labels = []
     n_texts = len(texts)
@@ -64,13 +63,13 @@ def inference(model, texts, threshold=52/99, batch_size=8):
         start_time = time.perf_counter()
         
         token_dict = tokenizer(texts[start: start + batch_size], return_tensors='pt', \
-                              truncation=True, padding='max_length', max_length=400, \
+                              truncation=True, padding='max_length', max_length=512, \
                               return_token_type_ids=False, return_attention_mask=False)
         token_ids = token_dict['input_ids'].to(device)        
         with torch.no_grad():
             output = model(token_ids)
             probas = output.logits[:, 0]
-            labels = (output.logits[:, 0] > threshold).int()    
+            labels = (output.logits[:, 0] > threshold).int() 
 
         all_probas.extend(probas.tolist())
         all_labels.extend(labels.tolist())
@@ -78,8 +77,34 @@ def inference(model, texts, threshold=52/99, batch_size=8):
         
         time_elapsed = time.perf_counter() - start_time
         print(f"Position {start}/{n_texts} ended in {time_elapsed} seconds")
-
     return all_probas, all_labels
+
+def inference_2(model, texts, batch_size=8):
+    all_probas = []
+    all_labels = []
+    n_texts = len(texts)
+    
+    for start in range(0, n_texts, batch_size):
+        start_time = time.perf_counter()
+        
+        token_dict = tokenizer(texts[start: start + batch_size], return_tensors='pt', \
+                              truncation=True, padding='max_length', max_length=512, \
+                              return_token_type_ids=False, return_attention_mask=False)
+        token_ids = token_dict['input_ids'].to(device)        
+        with torch.no_grad():
+            output = model(token_ids)
+            output = softmax(output.logits)
+            labels = torch.argmax(output, axis=-1)
+
+        all_probas.extend(output[:, 1].tolist())
+        all_labels.extend(labels.tolist())
+        del token_ids
+        
+        time_elapsed = time.perf_counter() - start_time
+        print(f"Position {start}/{n_texts} ended in {time_elapsed} seconds")
+    # pdb.set_trace()
+    return all_probas, all_labels
+
 
 def get_model_by_exp_dir(model_path):
     model = DepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1).to(device)
@@ -89,8 +114,14 @@ def get_model_by_exp_dir(model_path):
 
     return model
 
-# model_1 = get_model_by_exp_dir(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
-# inference_1 = lambda texts: inference(model_1, texts, threshold=55/99)
+model = get_model_by_exp_dir(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
+inference_1 = lambda texts: inference(model, texts)
+tokenizer = BertTokenizer.from_pretrained("mental/mental-bert-base-uncased")
+
+# tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+# model = BertForSequenceClassification.from_pretrained("models/checkpoint-15546").to(device)
+# model.eval()
+# inference_1 = lambda texts: inference_2(model, texts)
 
 
 def main():

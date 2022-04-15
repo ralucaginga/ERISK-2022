@@ -181,15 +181,35 @@ def features_pipeline2(dates, text):
     antidepress_count, three_grams_count, five_grams_count, overgeneralization_count, psychoactive_count, unpleasant_feel_count, nssi_count, temporal_count = count_depressive_terms(
         text)
 
-
-
-    list_of_features = [adjective_count / words_count, verb_count  / words_count, noun_count  / words_count, adverb_count  / words_count,
-       negation_count / words_count, formality_metric, readiness_to_action_coefficient,
-       aggressiveness_coefficient, activity_index, time_level,
-       first_person_pron_count / words_count, antidepress_count / words_count, three_grams_count / words_count,
-       five_grams_count / words_count, overgeneralization_count / words_count, psychoactive_count / words_count,
-       unpleasant_feel_count / words_count, nssi_count / words_count, temporal_count / words_count, punct_count / words_count,
-       questions_count / words_count, exclamations_count / words_count / words_count, capitalized_count / words_count]
+    if words_count != 0:
+        list_of_features = [
+            adjective_count / words_count, 
+            verb_count  / words_count, 
+            noun_count  / words_count, 
+            adverb_count  / words_count,
+            negation_count / words_count, 
+            formality_metric, 
+            readiness_to_action_coefficient,
+            aggressiveness_coefficient, 
+            activity_index, 
+            time_level,
+            first_person_pron_count / words_count, 
+            antidepress_count / words_count, 
+            three_grams_count / words_count,
+            five_grams_count / words_count, 
+            overgeneralization_count / words_count, 
+            psychoactive_count / words_count,
+            unpleasant_feel_count / words_count, 
+            nssi_count / words_count, 
+            temporal_count / words_count, 
+            punct_count / words_count,
+            questions_count / words_count, 
+            exclamations_count / words_count, 
+            capitalized_count / words_count
+        ]
+    else:
+        list_of_features = [0 for _ in range(23)]
+        list_of_features[9] = time_level
 
     return list_of_features
 
