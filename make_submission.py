@@ -111,8 +111,8 @@ def voting_text_predict(user):
 
 # Model trained on averaged metadata
 def xgb_metadata_avg_predict(user):
-    text = current_text_for_user[user]
-    dates = dates_for_users[user]
+    text = current_text_for_user.get(user, '')
+    dates = dates_for_users.get(user, '')
     dates = [datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in dates]
     features = features_pipeline2(dates, text)
     label = int(xgb_model_avg.predict(np.array([features]))[0])
@@ -214,7 +214,7 @@ while should_continue:
         fout.write(str(number))
 
     for answer in answers:
-        redditor_str = answer['redditor']
+        redditor_str = str(answer['redditor'])
         answer_text = str(answer.get('title', '') + ' ' + answer.get('content', ''))
 
         current_text_for_user[redditor_str] = answer_text
