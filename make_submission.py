@@ -248,12 +248,12 @@ def bert_prediction(user, single_pred):
 
 # user could be used to acces any data in the dictionaries above
 
-# with open(f'submit/full_texts_and_users.json', 'r') as infile:
-#     full_texts_for_users = json.load(infile)
-# with open(f'submit/nicks_for_users.json', 'r') as infile:
-#     nicks_for_users = json.load(infile)
-# with open(f'submit/dates_for_users.json', 'r') as infile:
-#     dates_for_users = json.load(infile)
+with open(f'submit/full_texts_and_users.json', 'r') as infile:
+    full_texts_for_users = json.load(infile)
+with open(f'submit/nicks_for_users.json', 'r') as infile:
+    nicks_for_users = json.load(infile)
+with open(f'submit/dates_for_users.json', 'r') as infile:
+    dates_for_users = json.load(infile)
 
 #full_ct_models = [inference_1]
 bert_pred = lambda user: bert_prediction(user, bert_single_prediction)
@@ -306,19 +306,19 @@ while should_continue:
             dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
-    # with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
-    #     json.dump(full_texts_for_users, outfile)
-    # with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
-    #     json.dump(nicks_for_users, outfile)
-    # with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
-    #     json.dump(dates_for_users, outfile)
+    with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
+        json.dump(full_texts_for_users, outfile)
+    with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
+        json.dump(nicks_for_users, outfile)
+    with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
+        json.dump(dates_for_users, outfile)
 
-    # with open(f'submit/full_texts_and_users.json', 'w') as outfile:
-    #     json.dump(full_texts_for_users, outfile)
-    # with open(f'submit/nicks_for_users.json', 'w') as outfile:
-    #     json.dump(nicks_for_users, outfile)
-    # with open(f'submit/dates_for_users.json', 'w') as outfile:
-    #     json.dump(dates_for_users, outfile)
+    with open(f'submit/full_texts_and_users.json', 'w') as outfile:
+        json.dump(full_texts_for_users, outfile)
+    with open(f'submit/nicks_for_users.json', 'w') as outfile:
+        json.dump(nicks_for_users, outfile)
+    with open(f'submit/dates_for_users.json', 'w') as outfile:
+        json.dump(dates_for_users, outfile)
 
     run = 0
     for model in user_level_models:
