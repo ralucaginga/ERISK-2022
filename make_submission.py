@@ -2,6 +2,7 @@ import json
 import pickle
 import pdb
 import time
+import os
 
 import numpy as np
 import requests
@@ -26,7 +27,7 @@ from scipy import sparse
 from emot.emo_unicode import UNICODE_EMOJI, UNICODE_EMOJI_ALIAS, EMOTICONS_EMO
 from flashtext import KeywordProcessor
 from nrclex import NRCLex
-from datasets import Dataset
+from models import DepressedBert
 # from transformers import Trainer, BertForSequenceClassification, BertTokenizer
 #from test_bert import inference_1
 
@@ -44,7 +45,17 @@ dates_for_users = {}
 tfidf = pickle.load(open("models/tfidf_vectorizer_full_data.pkl", "rb"))
 scaler = pickle.load(open("models/scaler_minmax_full.sav", "rb"))
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model_bert = BertForSequenceClassification.from_pretrained("checkpoint-15546")
+# TODO: update the path if you have any issues
+model_bert = BertForSequenceClassification.from_pretrained("models/checkpoint-15546")
+
+tokenizer_thresh = BertTokenizer.from_pretrained("mental/mental-bert-base-uncased")
+
+# TODO: update the path if you have any issues
+model_thresh = DepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1)
+state_dict = torch.load(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
+model_thresh.load_state_dict(state_dict["model"])
+model_thresh.eval()
+
 
 # Models
 xgb_model = pickle.load(open('./bogdan_pickle_xgb_on_metadata.sav', 'rb'))
@@ -157,33 +168,50 @@ def voting_combined_predict(user):
     return label, score
 
 
+def bert_single_prediction(text):
+    encodings = tokenizer(text,
+                            max_length=512,
+                            truncation=True,
+                            padding=True,
+                            return_tensors="pt")
+    with torch.no_grad():
+        outputs = model_bert(**encodings)
+    preds = outputs.logits
+    label = preds.argmax(-1).numpy()[0]
+    proba = torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1]
+    return int(label), float(proba)
+
+def bert_thresholded_single_prediction(text, threshold=55/99):
+    encodings = tokenizer_thresh(text,
+                            max_length=512,
+                            truncation=True,
+                            padding=True,
+                            return_tensors="pt") 
+    with torch.no_grad():
+        output = model_thresh(**encodings)
+        labels = (output.logits[:, 0] > threshold).int()
+    label = labels[0].item()
+    proba = output.logits[:, 0][0].item()
+    return int(label), float(proba)
+
 # Bert with Augmentation
-def bert_prediction(user):
-    text = full_texts_for_users[user]
+def bert_prediction(user, single_pred):
+    text = current_text_for_user.get(user, '')
+    if text == '':
+        return 0, 0.0
+
     text = basic_preprocess_bert(text)
     if len(text.split()) >= 450:
         batches_no = len(text.split()) // 450 + 1
         for i in range(batches_no):
             text = ' '.join(text.split()[(i * 450):(i + 1) * 450])
-            encodings = tokenizer(text,
-                                  max_length=512,
-                                  truncation=True,
-                                  padding=True,
-                                  return_tensors="pt")
-            outputs = model_bert(**encodings)
-            preds = outputs.logits
-            if int(preds.argmax(-1).numpy()[0]) == 1:
-                return 1, float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
-        return 0, float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
+
+            label, proba = single_pred(text)
+            if label == 1:
+                return label, proba
+        return 0, proba
     else:
-        encodings = tokenizer(text,
-                              max_length=512,
-                              truncation=True,
-                              padding=True,
-                              return_tensors="pt")
-        outputs = model_bert(**encodings)
-        preds = outputs.logits
-        return int(preds.argmax(-1).numpy()[0]), float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
+        return single_pred(text)    
 
 
 # BERT with Augmentation prediction
@@ -220,15 +248,20 @@ def bert_prediction(user):
 
 # user could be used to acces any data in the dictionaries above
 
-with open(f'submit/full_texts_and_users.json', 'r') as infile:
-    full_texts_for_users = json.load(infile)
-with open(f'submit/nicks_for_users.json', 'r') as infile:
-    nicks_for_users = json.load(infile)
-with open(f'submit/dates_for_users.json', 'r') as infile:
-    dates_for_users = json.load(infile)
+# with open(f'submit/full_texts_and_users.json', 'r') as infile:
+#     full_texts_for_users = json.load(infile)
+# with open(f'submit/nicks_for_users.json', 'r') as infile:
+#     nicks_for_users = json.load(infile)
+# with open(f'submit/dates_for_users.json', 'r') as infile:
+#     dates_for_users = json.load(infile)
 
 #full_ct_models = [inference_1]
-user_level_models = [bert_prediction, voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict]
+bert_pred = lambda user: bert_prediction(user, bert_single_prediction)
+bert_thresh_pred = lambda user: bert_prediction(user, bert_single_prediction)
+
+user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, bert_pred, bert_thresh_pred]
+# user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict, bert_thresh_pred]
+
 HEADERS = {
     'Content-type': 'application/json',
     'Accept': 'application/json'
@@ -247,7 +280,8 @@ while should_continue:
     print(f'STEP: {step}')
 
     number = answers[0]["number"]
-    with open('submit/number.out', 'w') as fout:
+    # TODO: update the path if you have any issues
+    with open('data/submit/number.out', 'w') as fout:
         fout.write(str(number))
 
     for answer in answers:
@@ -272,19 +306,19 @@ while should_continue:
             dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
-    with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
-        json.dump(full_texts_for_users, outfile)
-    with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
-        json.dump(nicks_for_users, outfile)
-    with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
-        json.dump(dates_for_users, outfile)
+    # with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
+    #     json.dump(full_texts_for_users, outfile)
+    # with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
+    #     json.dump(nicks_for_users, outfile)
+    # with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
+    #     json.dump(dates_for_users, outfile)
 
-    with open(f'submit/full_texts_and_users.json', 'w') as outfile:
-        json.dump(full_texts_for_users, outfile)
-    with open(f'submit/nicks_for_users.json', 'w') as outfile:
-        json.dump(nicks_for_users, outfile)
-    with open(f'submit/dates_for_users.json', 'w') as outfile:
-        json.dump(dates_for_users, outfile)
+    # with open(f'submit/full_texts_and_users.json', 'w') as outfile:
+    #     json.dump(full_texts_for_users, outfile)
+    # with open(f'submit/nicks_for_users.json', 'w') as outfile:
+    #     json.dump(nicks_for_users, outfile)
+    # with open(f'submit/dates_for_users.json', 'w') as outfile:
+    #     json.dump(dates_for_users, outfile)
 
     run = 0
     for model in user_level_models:

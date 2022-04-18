@@ -229,7 +229,7 @@ class MixupDepressedBert(BertForSequenceClassification):
             attentions=outputs.attentions,
         )
 
-from datasets import EriskDataset
+from datasets_1 import EriskDataset
 from torch.utils.data import DataLoader
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
