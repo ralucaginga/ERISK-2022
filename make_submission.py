@@ -11,10 +11,14 @@ import pandas as pd
 import contractions
 import numpy as np
 import requests
+import torch
 from lightgbm import LGBMClassifier
 from sklearn.calibration import CalibratedClassifierCV
 
 from datetime import datetime
+
+from transformers import BertTokenizer, BertForSequenceClassification
+
 from feature_pipeline import features_pipeline
 from feature_pipeline2 import features_pipeline2
 from nltk.corpus import stopwords
@@ -24,11 +28,11 @@ from flashtext import KeywordProcessor
 from nrclex import NRCLex
 from datasets import Dataset
 # from transformers import Trainer, BertForSequenceClassification, BertTokenizer
-from test_bert import inference_1
+#from test_bert import inference_1
 
 TEAM_TOKEN = f'v7PtOtt0pFUim9HbtrKqTiurdwRHgQR6Eh5sgZPT5xI'
-GET_URL = f'https://erisk.irlab.org/challenge-t2/getwritings/{TEAM_TOKEN}'
-POST_URL = f'https://erisk.irlab.org/challenge-t2/submit/{TEAM_TOKEN}'
+GET_URL = f'https://erisk.irlab.org/challenge-service/getwritings/{TEAM_TOKEN}'
+POST_URL = f'https://erisk.irlab.org/challenge-service/submit/{TEAM_TOKEN}'
 
 # Global dictionary
 full_texts_for_users = {}
@@ -39,7 +43,8 @@ dates_for_users = {}
 # Vectorizer & Scaler
 tfidf = pickle.load(open("models/tfidf_vectorizer_full_data.pkl", "rb"))
 scaler = pickle.load(open("models/scaler_minmax_full.sav", "rb"))
-# tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+model_bert = BertForSequenceClassification.from_pretrained("checkpoint-15546")
 
 # Models
 xgb_model = pickle.load(open('./bogdan_pickle_xgb_on_metadata.sav', 'rb'))
@@ -88,6 +93,7 @@ def full_preprocess_text(text, stopwords_removal=True):
         text = ' '.join([word for word in text.split() if not stops_dict.get(word, False)])
     return text
 
+
 # Models prediction functions
 
 # Model trained on original metadata
@@ -109,6 +115,7 @@ def voting_text_predict(user):
     score = float(voting_text.predict_proba(transform)[0][1])
     return label, score
 
+
 # Model trained on averaged metadata
 def xgb_metadata_avg_predict(user):
     text = current_text_for_user.get(user, '')
@@ -118,6 +125,7 @@ def xgb_metadata_avg_predict(user):
     label = int(xgb_model_avg.predict(np.array([features]))[0])
     score = float(xgb_model_avg.predict_proba(np.array([features]))[0][1])
     return label, score
+
 
 def svm_combined_predict(user):
     text = full_texts_for_users[user]
@@ -147,6 +155,35 @@ def voting_combined_predict(user):
     label = int(voting_model.predict(combined_text)[0])
     score = float(voting_model.predict_proba(combined_text)[0][1])
     return label, score
+
+
+# Bert with Augmentation
+def bert_prediction(user):
+    text = full_texts_for_users[user]
+    text = basic_preprocess_bert(text)
+    if len(text.split()) >= 450:
+        batches_no = len(text.split()) // 450 + 1
+        for i in range(batches_no):
+            text = ' '.join(text.split()[(i * 450):(i + 1) * 450])
+            encodings = tokenizer(text,
+                                  max_length=512,
+                                  truncation=True,
+                                  padding=True,
+                                  return_tensors="pt")
+            outputs = model_bert(**encodings)
+            preds = outputs.logits
+            if int(preds.argmax(-1).numpy()[0]) == 1:
+                return 1, float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
+        return 0, float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
+    else:
+        encodings = tokenizer(text,
+                              max_length=512,
+                              truncation=True,
+                              padding=True,
+                              return_tensors="pt")
+        outputs = model_bert(**encodings)
+        preds = outputs.logits
+        return int(preds.argmax(-1).numpy()[0]), float(torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1])
 
 
 # BERT with Augmentation prediction
@@ -183,15 +220,15 @@ def voting_combined_predict(user):
 
 # user could be used to acces any data in the dictionaries above
 
-with open(f'data/submit/full_texts_and_users.json', 'r') as infile:
+with open(f'submit/full_texts_and_users.json', 'r') as infile:
     full_texts_for_users = json.load(infile)
-with open(f'data/submit/nicks_for_users.json', 'r') as infile:
+with open(f'submit/nicks_for_users.json', 'r') as infile:
     nicks_for_users = json.load(infile)
-with open(f'data/submit/dates_for_users.json', 'r') as infile:
+with open(f'submit/dates_for_users.json', 'r') as infile:
     dates_for_users = json.load(infile)
 
-full_ct_models = [inference_1] 
-user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict]
+#full_ct_models = [inference_1]
+user_level_models = [bert_prediction, voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict]
 HEADERS = {
     'Content-type': 'application/json',
     'Accept': 'application/json'
@@ -210,7 +247,7 @@ while should_continue:
     print(f'STEP: {step}')
 
     number = answers[0]["number"]
-    with open('data/submit/number.out', 'w') as fout:
+    with open('submit/number.out', 'w') as fout:
         fout.write(str(number))
 
     for answer in answers:
@@ -222,7 +259,7 @@ while should_continue:
             full_texts_for_users[redditor_str] = answer_text
         else:
             full_texts_for_users[redditor_str] = full_texts_for_users[redditor_str] + ' ' + \
-                                                       answer_text
+                                                 answer_text
 
         if redditor_str not in nicks_for_users:
             nicks_for_users[redditor_str] = answer['nick']
@@ -235,18 +272,18 @@ while should_continue:
             dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
-    with open(f'data/submit/full_texts_and_users_{number}.json', 'w') as outfile:
+    with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
         json.dump(full_texts_for_users, outfile)
-    with open(f'data/submit/nicks_for_users_{number}.json', 'w') as outfile:
+    with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
         json.dump(nicks_for_users, outfile)
-    with open(f'data/submit/dates_for_users_{number}.json', 'w') as outfile:
+    with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
-    with open(f'data/submit/full_texts_and_users.json', 'w') as outfile:
+    with open(f'submit/full_texts_and_users.json', 'w') as outfile:
         json.dump(full_texts_for_users, outfile)
-    with open(f'data/submit/nicks_for_users.json', 'w') as outfile:
+    with open(f'submit/nicks_for_users.json', 'w') as outfile:
         json.dump(nicks_for_users, outfile)
-    with open(f'data/submit/dates_for_users.json', 'w') as outfile:
+    with open(f'submit/dates_for_users.json', 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
     run = 0
@@ -274,11 +311,11 @@ while should_continue:
         print(post_response)
         run += 1
 
-    for model in full_ct_models:
+    '''for model in full_ct_models:
         print(f'Run: {run}')
         users_key = list(full_texts_for_users.keys())
         users_text = [basic_preprocess_bert(text) for text in full_texts_for_users.values()]
-        
+
         results = []
         scores, labels = model(users_text)
         for user, label, score in zip(users_key, labels, scores):
@@ -292,7 +329,7 @@ while should_continue:
         post_response = requests.post(f'{POST_URL}/{run}', data=json_results, headers=HEADERS)
         print('Post request done')
         print(post_response)
-        run += 1
+        run += 1'''
 
     get_response = requests.get(GET_URL, headers=HEADERS)
     print('Get request done')
