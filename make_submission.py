@@ -31,6 +31,10 @@ from models import DepressedBert
 # from transformers import Trainer, BertForSequenceClassification, BertTokenizer
 #from test_bert import inference_1
 
+submit_logs_folder = os.path.join('data', 'submit')
+if not os.path.exists(submit_logs_folder):
+    os.makedirs(submit_logs_folder)
+
 TEAM_TOKEN = f'v7PtOtt0pFUim9HbtrKqTiurdwRHgQR6Eh5sgZPT5xI'
 GET_URL = f'https://erisk.irlab.org/challenge-service/getwritings/{TEAM_TOKEN}'
 POST_URL = f'https://erisk.irlab.org/challenge-service/submit/{TEAM_TOKEN}'
@@ -197,10 +201,11 @@ def bert_thresholded_single_prediction(text, threshold=55/99):
 # Bert with Augmentation
 def bert_prediction(user, single_pred):
     text = current_text_for_user.get(user, '')
+    text = basic_preprocess_bert(text)
+
     if text == '':
         return 0, 0.0
 
-    text = basic_preprocess_bert(text)
     if len(text.split()) >= 450:
         batches_no = len(text.split()) // 450 + 1
         for i in range(batches_no):
@@ -248,12 +253,20 @@ def bert_prediction(user, single_pred):
 
 # user could be used to acces any data in the dictionaries above
 
-with open(f'submit/full_texts_and_users.json', 'r') as infile:
-    full_texts_for_users = json.load(infile)
-with open(f'submit/nicks_for_users.json', 'r') as infile:
-    nicks_for_users = json.load(infile)
-with open(f'submit/dates_for_users.json', 'r') as infile:
-    dates_for_users = json.load(infile)
+full_texts_path = os.path.join(submit_logs_folder, 'full_texts_and_users.json')
+if os.path.exists(full_texts_path):
+    with open(full_texts_path, 'r') as infile:
+        full_texts_for_users = json.load(infile)
+
+nicks_path = os.path.join(submit_logs_folder, 'nicks_for_users.json')
+if os.path.exists(nicks_path):
+    with open(nicks_path, 'r') as infile:
+        nicks_for_users = json.load(infile)
+
+users_path = os.path.join(submit_logs_folder, 'dates_for_users.json')
+if os.path.exists(users_path):
+    with open(users_path, 'r') as infile:
+        dates_for_users = json.load(infile)
 
 #full_ct_models = [inference_1]
 bert_pred = lambda user: bert_prediction(user, bert_single_prediction)
@@ -306,18 +319,18 @@ while should_continue:
             dates_for_users[redditor_str].append(clean_date)
 
     # Just in case
-    with open(f'submit/full_texts_and_users_{number}.json', 'w') as outfile:
+    with open(f'{full_texts_path[:-5]}_{number}.json', 'w') as outfile:
         json.dump(full_texts_for_users, outfile)
-    with open(f'submit/nicks_for_users_{number}.json', 'w') as outfile:
+    with open(f'{nicks_path[:-5]}_{number}.json', 'w') as outfile:
         json.dump(nicks_for_users, outfile)
-    with open(f'submit/dates_for_users_{number}.json', 'w') as outfile:
+    with open(f'{users_path[:-5]}_{number}.json', 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
-    with open(f'submit/full_texts_and_users.json', 'w') as outfile:
+    with open(full_texts_path, 'w') as outfile:
         json.dump(full_texts_for_users, outfile)
-    with open(f'submit/nicks_for_users.json', 'w') as outfile:
+    with open(nicks_path, 'w') as outfile:
         json.dump(nicks_for_users, outfile)
-    with open(f'submit/dates_for_users.json', 'w') as outfile:
+    with open(users_path, 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
     run = 0
