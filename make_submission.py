@@ -89,6 +89,7 @@ for k, v in all_emoji_emoticons.items():
 
 def basic_preprocess_bert(text):
     text = re.sub(r'http\S+', ' ', text)
+    text = re.sub(' +', ' ', text)
     return text
 
 
