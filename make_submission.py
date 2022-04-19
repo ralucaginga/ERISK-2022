@@ -56,7 +56,7 @@ tokenizer_thresh = BertTokenizer.from_pretrained("mental/mental-bert-base-uncase
 
 # TODO: update the path if you have any issues
 model_thresh = DepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1)
-state_dict = torch.load(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'))
+state_dict = torch.load(os.path.join('models', 'mental-bert-base-uncased', 'best.pth'), map_location=torch.device('cpu'))
 model_thresh.load_state_dict(state_dict["model"])
 model_thresh.eval()
 
@@ -87,6 +87,7 @@ for k, v in all_emoji_emoticons.items():
 
 def basic_preprocess_bert(text):
     text = re.sub(r'http\S+', ' ', text)
+    text = re.sub(' +', ' ', text)
     return text
 
 
