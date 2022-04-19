@@ -45,17 +45,19 @@ current_text_for_user = {}
 nicks_for_users = {}
 dates_for_users = {}
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
 # Vectorizer & Scaler
 tfidf = pickle.load(open("models/tfidf_vectorizer_full_data.pkl", "rb"))
 scaler = pickle.load(open("models/scaler_minmax_full.sav", "rb"))
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 # TODO: update the path if you have any issues
-model_bert = BertForSequenceClassification.from_pretrained("models/checkpoint-15546")
+model_bert = BertForSequenceClassification.from_pretrained("models/checkpoint-15546").to(device)
 
 tokenizer_thresh = BertTokenizer.from_pretrained("mental/mental-bert-base-uncased")
 
 # TODO: update the path if you have any issues
-model_thresh = DepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1)
+model_thresh = DepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1).to(device)
 state_dict = torch.load(os.path.join('logs', 'mental', 'mental-bert-base-uncased_2', 'best.pth'), map_location='cpu')
 model_thresh.load_state_dict(state_dict["model"])
 model_thresh.eval()
@@ -177,12 +179,12 @@ def bert_single_prediction(text):
                             max_length=512,
                             truncation=True,
                             padding=True,
-                            return_tensors="pt")
+                            return_tensors="pt").to(device)
     with torch.no_grad():
         outputs = model_bert(**encodings)
     preds = outputs.logits
-    label = preds.argmax(-1).numpy()[0]
-    proba = torch.nn.functional.softmax(preds, dim=1).detach().numpy()[0][1]
+    label = preds.argmax(-1).cpu().numpy()[0]
+    proba = torch.nn.functional.softmax(preds, dim=1).detach().cpu().numpy()[0][1]
     return int(label), float(proba)
 
 def bert_thresholded_single_prediction(text, threshold=55/99):
@@ -190,7 +192,7 @@ def bert_thresholded_single_prediction(text, threshold=55/99):
                             max_length=512,
                             truncation=True,
                             padding=True,
-                            return_tensors="pt") 
+                            return_tensors="pt").to(device)
     with torch.no_grad():
         output = model_thresh(**encodings)
         labels = (output.logits[:, 0] > threshold).int()
