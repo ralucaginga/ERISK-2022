@@ -229,20 +229,20 @@ class MixupDepressedBert(BertForSequenceClassification):
             attentions=outputs.attentions,
         )
 
-from datasets_1 import EriskDataset
-from torch.utils.data import DataLoader
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# from datasets_1 import EriskDataset
+# from torch.utils.data import DataLoader
+# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-model = MixupDepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1).to(device)
+# model = MixupDepressedBert.from_pretrained("mental/mental-bert-base-uncased", num_labels=1).to(device)
 
-train_dataset = EriskDataset('train')
-train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0)
+# train_dataset = EriskDataset('train')
+# train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0)
 
-for batch in train_dataloader:
-    input_ids, labels = batch
-    input_ids = input_ids.to(device)
-    labels = labels.float().to(device)
+# for batch in train_dataloader:
+#     input_ids, labels = batch
+#     input_ids = input_ids.to(device)
+#     labels = labels.float().to(device)
 
-    output = model(input_ids, labels=labels)
-    loss = output.loss
-    break
+#     output = model(input_ids, labels=labels)
+#     loss = output.loss
+#     break

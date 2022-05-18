@@ -273,7 +273,7 @@ if os.path.exists(users_path):
 
 #full_ct_models = [inference_1]
 bert_pred = lambda user: bert_prediction(user, bert_single_prediction)
-bert_thresh_pred = lambda user: bert_prediction(user, bert_single_prediction)
+bert_thresh_pred = lambda user: bert_prediction(user, bert_thresholded_single_prediction)
 
 user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, bert_pred, bert_thresh_pred]
 # user_level_models = [voting_text_predict, xgb_metadata_avg_predict, svm_combined_predict, xgb_metadata_predict, bert_thresh_pred]
@@ -336,6 +336,7 @@ while should_continue:
     with open(users_path, 'w') as outfile:
         json.dump(dates_for_users, outfile)
 
+    step_start = time.perf_counter()
     run = 0
     for model in user_level_models:
         print(f'Run: {run}')
@@ -360,6 +361,8 @@ while should_continue:
         print('Post request done')
         print(post_response)
         run += 1
+    step_time = time.perf_counter() - step_start
+    print(f"Step finished in {step_time}")
 
     '''for model in full_ct_models:
         print(f'Run: {run}')
